@@ -1,57 +1,32 @@
-﻿//Copyright (c) Chris Pietschmann 2015 (http://pietschsoft.com)
-//Licensed under the GNU Library General Public License (LGPL)
-//License can be found here: https://github.com/crpietschmann/SQLinq/blob/master/LICENSE
-
-using System;
+﻿using System;
+using System.Collections.Generic;
 using System.Text;
 
-namespace SQLinq
+namespace SQLinq.Dialect
 {
-
-    public class SqlServerDialect : ISqlDialect
+    public class MySqlDialect : SqlServerDialect , ISqlDialect
     {
-        const string _Space = " ";
-
-        public virtual object ConvertParameterValue(object value)
+        public  override string ParseTableName(string tableName)
         {
-            return value;
-        }
-
-        public virtual void AssertSkip<T>(SQLinq<T> sqLinq)
-        {
-            if (sqLinq.OrderByExpressions.Count == 0)
+            if (!tableName.StartsWith("`", StringComparison.InvariantCultureIgnoreCase))
             {
-                throw new NotSupportedException("SQLinq: Skip can only be performed if OrderBy is specified.");
-            }
-        }
-
-        const string _parameterPrefix = "@";
-        public  virtual string ParameterPrefix 
-        {
-            get { return _parameterPrefix; }
-        }
-
-        public  virtual string ParseTableName(string tableName)
-        {
-            if (!tableName.StartsWith("["))
-            {
-                return string.Format("[{0}]", tableName);
+                return $"`{tableName}`";
             }
 
             return tableName;
         }
 
-        public  virtual string ParseColumnName(string columnName)
+        public  override string ParseColumnName(string columnName)
         {
-            if (!columnName.StartsWith("[") && !columnName.Contains("."))
+            if (!columnName.StartsWith("`", StringComparison.InvariantCultureIgnoreCase) && !columnName.Contains("."))
             {
-                return string.Format("[{0}]", columnName);
+                return $"`{columnName}`";
             }
 
             return columnName;  
         }
 
-        public  virtual string ToQuery(SQLinqSelectResult selectResult)
+        public override string ToQuery(SQLinqSelectResult selectResult)
         {
             var orderby = DialectProvider.ConcatFieldArray(selectResult.OrderBy);
 
@@ -75,7 +50,7 @@ namespace SQLinq
                 {
                     sb.Append(",");
                 }
-                sb.Append($" ROW_NUMBER() OVER (ORDER BY {@orderby}) AS [SQLinq_row_number]");
+                sb.Append(string.Format(" ROW_NUMBER() OVER (ORDER BY {0}) AS [SQLinq_row_number]", orderby));
             }
 
             sb.Append(" FROM ");
@@ -161,5 +136,6 @@ namespace SQLinq
 
             return "SELECT " + sb.ToString() + sqlOrderBy;
         }
+
     }
 }
