@@ -8,6 +8,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
+using SQLinq.Dialect;
 
 namespace SQLinq
 {
@@ -452,7 +453,7 @@ namespace SQLinq
             {
                 var tableQuery = subqueryAttr.GetQuery(parameters);
                 _parameterNumber = parameters.Count;
-                tableName = string.Format("({0}) AS {1}", tableQuery, tableName);
+                tableName = $"({tableQuery}) AS {tableName}";
             }
 
             //// JOIN
@@ -566,6 +567,11 @@ namespace SQLinq
             }
 
             return orderbyResult;
+        }
+
+        public void SetDialect(ISqlDialect dialect)
+        {
+            Dialect = dialect;
         }
     }
 }

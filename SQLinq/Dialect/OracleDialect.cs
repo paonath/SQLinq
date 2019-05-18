@@ -6,11 +6,10 @@ using System.Text;
 
 namespace SQLinq
 {
-    public class OracleDialect : ISqlDialect
+    public class OracleDialect : AbsSqlDialect, ISqlDialect
     {
-        const string _Space = " ";
-
-        public object ConvertParameterValue(object value)
+        
+        public override object ConvertParameterValue(object value)
         {
             if (value is bool)
             {
@@ -20,23 +19,16 @@ namespace SQLinq
             return value;
         }
 
-        public void AssertSkip<T>(SQLinq<T> sqLinq)
+        public override void AssertSkip<T>(SQLinq<T> sqLinq)
         {
 
         }
 
-        const string _parameterPrefix = ":";
-        public string ParameterPrefix
-        {
-            get { return _parameterPrefix; }
-        }
+        public string ParameterPrefix => ":";
 
-        public string ParseTableName(string tableName)
-        {
-            return tableName;
-        }
+        public override string ParseTableName(string tableName) => tableName;
 
-        public string ParseColumnName(string columnName)
+        public override string ParseColumnName(string columnName)
         {
             if (columnName.Contains(_Space))
             {
@@ -45,7 +37,7 @@ namespace SQLinq
             return columnName;
         }
 
-        public string ToQuery(SQLinqSelectResult selectResult)
+        public override string ToQuery(SQLinqSelectResult selectResult)
         {
             var orderby = DialectProvider.ConcatFieldArray(selectResult.OrderBy);
 
@@ -125,20 +117,18 @@ namespace SQLinq
                 var end = (selectResult.Skip + (selectResult.Take ?? 0)).ToString();
                 if (selectResult.Take == null)
                 {
-                    return string.Format("SELECT * FROM (SELECT {0}) WHERE ROWNUM >= {1}", sb.ToString(), start);
+                    return $"SELECT * FROM (SELECT {sb}) WHERE ROWNUM >= {start}";
                 }
 
-                return string.Format("SELECT SQLinq_Outer.* FROM (SELECT ROWNUM rn, SQLinq_Inner.* FROM (SELECT {0}) SQLinq_Inner) SQLinq_Outer WHERE SQLinq_Outer.rn >= {1} AND SQLinq_Outer.rn <= {2}",
-                       sb.ToString(),
-                       start,
-                       end);
+                return
+                    $"SELECT SQLinq_Outer.* FROM (SELECT ROWNUM rn, SQLinq_Inner.* FROM (SELECT {sb}) SQLinq_Inner) SQLinq_Outer WHERE SQLinq_Outer.rn >= {start} AND SQLinq_Outer.rn <= {end}";
             }
             else if (selectResult.Take != null)
             {
-                return string.Format("SELECT * FROM (SELECT {0}) WHERE ROWNUM <= {1}", sb.ToString(), selectResult.Take.ToString());
+                return $"SELECT * FROM (SELECT {sb}) WHERE ROWNUM <= {selectResult.Take.ToString()}";
             }
 
-            return "SELECT " + sb.ToString() + sqlOrderBy;
+            return "SELECT " + sb + sqlOrderBy;
         }
     }
 }

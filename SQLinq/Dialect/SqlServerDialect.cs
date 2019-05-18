@@ -7,17 +7,16 @@ using System.Text;
 
 namespace SQLinq
 {
-
-    public class SqlServerDialect : ISqlDialect
+    public class SqlServerDialect : AbsSqlDialect, ISqlDialect
     {
-        const string _Space = " ";
+        //const string _Space = " ";
 
-        public virtual object ConvertParameterValue(object value)
+        public override object ConvertParameterValue(object value)
         {
             return value;
         }
 
-        public virtual void AssertSkip<T>(SQLinq<T> sqLinq)
+        public override void AssertSkip<T>(SQLinq<T> sqLinq)
         {
             if (sqLinq.OrderByExpressions.Count == 0)
             {
@@ -25,33 +24,30 @@ namespace SQLinq
             }
         }
 
-        const string _parameterPrefix = "@";
-        public  virtual string ParameterPrefix 
-        {
-            get { return _parameterPrefix; }
-        }
+        
+        public  virtual string ParameterPrefix => _parameterPrefix;
 
-        public  virtual string ParseTableName(string tableName)
+        public  override string ParseTableName(string tableName)
         {
-            if (!tableName.StartsWith("["))
+            if (!tableName.StartsWith("[", StringComparison.InvariantCultureIgnoreCase))
             {
-                return string.Format("[{0}]", tableName);
+                return $"[{tableName}]";
             }
 
             return tableName;
         }
 
-        public  virtual string ParseColumnName(string columnName)
+        public  override string ParseColumnName(string columnName)
         {
-            if (!columnName.StartsWith("[") && !columnName.Contains("."))
+            if (!columnName.StartsWith("[", StringComparison.InvariantCultureIgnoreCase) && !columnName.Contains("."))
             {
-                return string.Format("[{0}]", columnName);
+                return $"[{columnName}]";
             }
 
             return columnName;  
         }
 
-        public  virtual string ToQuery(SQLinqSelectResult selectResult)
+        public  override string ToQuery(SQLinqSelectResult selectResult)
         {
             var orderby = DialectProvider.ConcatFieldArray(selectResult.OrderBy);
 
@@ -136,20 +132,23 @@ namespace SQLinq
                 {
                     if (selectResult.Distinct == true)
                     {
-                        return string.Format(@"WITH SQLinq_data_set AS (SELECT {0}) SELECT * FROM SQLinq_data_set WHERE [SQLinq_row_number] >= {1} ORDER BY [SQLinq_row_number]", sb.ToString(), start);
+                        return
+                            $@"WITH SQLinq_data_set AS (SELECT {sb}) SELECT * FROM SQLinq_data_set WHERE [SQLinq_row_number] >= {start} ORDER BY [SQLinq_row_number]";
                     }
                     else
                     {
-                        return string.Format(@"WITH SQLinq_data_set AS (SELECT {0}) SELECT * FROM SQLinq_data_set WHERE [SQLinq_row_number] >= {1}", sb.ToString(), start);
+                        return
+                            $@"WITH SQLinq_data_set AS (SELECT {sb}) SELECT * FROM SQLinq_data_set WHERE [SQLinq_row_number] >= {start}";
                     }
                 }
 
-                return string.Format(@"WITH SQLinq_data_set AS (SELECT {0}) SELECT * FROM SQLinq_data_set WHERE [SQLinq_row_number] BETWEEN {1} AND {2}", sb.ToString(), start, end);
+                return
+                    $@"WITH SQLinq_data_set AS (SELECT {sb}) SELECT * FROM SQLinq_data_set WHERE [SQLinq_row_number] BETWEEN {start} AND {end}";
             }
             else if (selectResult.Take != null)
             {
                 var sbQuery = sb.ToString();
-                if (sbQuery.ToLower().StartsWith("distinct "))
+                if (sbQuery.ToLowerInvariant().StartsWith("distinct ", StringComparison.InvariantCultureIgnoreCase))
                 {
                     return "SELECT DISTINCT TOP " + selectResult.Take.ToString() + _Space + sbQuery.Substring(9) + sqlOrderBy;
                 }
